@@ -1,6 +1,6 @@
-# Store Screen Studio
+# Reps Screens
 
-FitPreneur Agency's App Store and Google Play screenshot builder.
+Reps' App Store and Google Play screenshot builder.
 
 - **Client brief** at `/`: clients enter their branding, 7 headlines and screenshots, then submit.
 - **Admin studio** at `/admin`: pick a submitted brief from the dropdown, choose a style, background pattern and phone layout, then download every store size as one ZIP.
@@ -52,15 +52,15 @@ You need a Cloudflare account and Node 18 or newer.
    Copy the `id` it prints into `wrangler.toml` in place of `REPLACE_WITH_YOUR_KV_NAMESPACE_ID`.
 3. **Create the Pages project and deploy**
    ```bash
-   npx wrangler pages project create store-screen-studio --production-branch main
+   npx wrangler pages project create reps-screens --production-branch main
    npx wrangler pages deploy
    ```
 4. **Set your admin key.** Make it long and random, as it's the only lock on `/admin`.
    ```bash
-   npx wrangler pages secret put ADMIN_KEY --project-name store-screen-studio
+   npx wrangler pages secret put ADMIN_KEY --project-name reps-screens
    ```
    Then run `npx wrangler pages deploy` once more so the key takes effect.
-5. Open `https://store-screen-studio.pages.dev/admin`, enter the key, and use **Copy client form link** to get the link for clients.
+5. Open `https://reps-screens.pages.dev/admin`, enter the key, and use **Copy client form link** to get the link for clients.
 
 ### Deploying from GitHub instead
 
@@ -74,7 +74,7 @@ Every push to `main` then redeploys automatically. `.dev.vars` is git-ignored, s
 
 ### Custom domain
 
-In the Pages project, open **Custom domains** and add, for example, `screens.fitpreneuragency.com`. Clients get the root of that domain and you use `/admin`.
+In the Pages project, open **Custom domains** and add, for example, `screens.yourdomain.com`. Clients get the root of that domain and you use `/admin`.
 
 ## Run it locally
 

@@ -1,4 +1,4 @@
-/* Store Screen Studio rendering engine.
+/* Reps Screens rendering engine.
    Draws App Store / Google Play screenshots on a canvas from a brief
    (brand + 7 screens) and a design (style + pattern + layout). */
 (function (global) {
@@ -446,7 +446,7 @@
 
   /* ---------- brief data ---------- */
   function emptyScreens() { return Array.from({ length: 7 }, () => ({ title: "", hl: "", copy: "", img: null, img2: null, tabletImg: null })); }
-  function emptyBrief() { return { kind: "store-screen-brief", version: 3, contact: { name: "", email: "", notes: "" }, brand: { appName: "", logo: null, primary: "#2F4A3A", accent: "#E2B23C", dark: null, light: null, font: "Montserrat" }, screens: emptyScreens() }; }
+  function emptyBrief() { return { kind: "store-screen-brief", version: 3, contact: { name: "", email: "", notes: "" }, brand: { appName: "", logo: null, primary: "#6C55A3", accent: "#F5B83D", dark: null, light: null, font: "Montserrat" }, screens: emptyScreens() }; }
   function sampleBrief() { const b = emptyBrief(); b.brand.appName = "Forge Coaching"; b.screens = SAMPLE.map(x => ({ title: x[0], hl: x[1], copy: x[2], img: null, img2: null, tabletImg: null })); return b; }
   function cleanBrief(d) {
     const b = emptyBrief(); d = d || {};
