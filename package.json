@@ -1,0 +1,13 @@
+{
+  "devDependencies": {
+    "wrangler": "^4.153.0"
+  },
+  "name": "store-screen-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FitPreneur Agency App Store and Google Play screenshot builder",
+  "scripts": {
+    "dev": "wrangler pages dev public",
+    "deploy": "wrangler pages deploy"
+  }
+}

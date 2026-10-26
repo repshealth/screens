@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>App Store Screenshots Brief</title>
+<meta name="description" content="Send FitPreneur Agency everything needed to design your App Store and Google Play screenshots.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&family=Poppins:wght@400;700&family=DM+Sans:wght@400;700&family=Archivo+Black&family=Bebas+Neue&family=Oswald:wght@700&family=Playfair+Display:wght@800&family=Figtree:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,700&display=swap">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="narrow" id="app">
+  <header class="top">
+    <div>
+      <p class="eyebrow">FitPreneur Agency</p>
+      <h1>Your App Store screenshots brief</h1>
+      <p>Tell us about your app and add 7 screenshots. We'll turn them into branded screens for the App Store and Google Play. It takes about 15 minutes, and your answers are kept on this device until you submit.</p>
+    </div>
+  </header>
+
+  <section class="step" aria-labelledby="h-you">
+    <h2 id="h-you"><span class="n">1</span>About you</h2>
+    <div class="grid2">
+      <div class="field"><label for="c-name">Your name <span class="req">*</span></label><input type="text" id="c-name" maxlength="80" autocomplete="name"></div>
+      <div class="field"><label for="c-email">Email <span class="req">*</span></label><input type="email" id="c-email" maxlength="120" autocomplete="email"></div>
+    </div>
+  </section>
+
+  <div id="form" style="display:flex;flex-direction:column;gap:16px"></div>
+
+  <section class="step" aria-labelledby="h-send">
+    <h2 id="h-send"><span class="n">4</span>Send it to us</h2>
+    <div class="field"><label for="c-notes">Anything else we should know? <small>(optional)</small></label><textarea id="c-notes" rows="3" maxlength="2000" placeholder="Launch date, competitors you like, words to avoid..."></textarea></div>
+    <ul class="checklist" id="checklist"></ul>
+    <!-- Honeypot: real people never see or fill this -->
+    <div class="vh" aria-hidden="true"><label for="c-website">Website</label><input type="text" id="c-website" tabindex="-1" autocomplete="off"></div>
+    <div class="row">
+      <button class="btn primary" id="submit" type="button">Submit brief</button>
+      <p class="status" id="status" aria-live="polite"></p>
+    </div>
+  </section>
+</div>
+
+<div class="narrow" id="thanks" hidden>
+  <section class="step thanks">
+    <h2>Brief received</h2>
+    <p class="hint" id="t-msg">Thanks <span id="t-name"></span>. We've got everything and will be in touch with your screenshots.</p>
+    <button class="btn" id="again" type="button">Submit another brief</button>
+  </section>
+</div>
+
+<script src="assets/engine.js"></script>
+<script src="assets/form.js"></script>
+<script src="assets/client.js"></script>
+</body>
+</html>
