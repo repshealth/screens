@@ -11,7 +11,7 @@
     clearTimeout(saveT);
     saveT = setTimeout(() => {
       try { localStorage.setItem(KEY, JSON.stringify(brief)); }
-      catch (e) { try { const lite = JSON.parse(JSON.stringify(brief)); lite.brand.logo = null; lite.screens.forEach(s => { s.img = s.img2 = s.tabletImg = null; }); localStorage.setItem(KEY, JSON.stringify(lite)); } catch (e2) {} }
+      catch (e) { try { const lite = JSON.parse(JSON.stringify(brief)); lite.brand.logo = null; lite.screens.forEach(s => { s.img = s.tabletImg = null; }); localStorage.setItem(KEY, JSON.stringify(lite)); } catch (e2) {} }
     }, 400);
   }
 

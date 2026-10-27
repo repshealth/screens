@@ -107,7 +107,7 @@ details.scr summary::-webkit-details-marker{display:none}
 .mini-wrap{display:flex;flex-direction:column;gap:6px;align-items:center}
 .mini{display:block;width:130px;border-radius:8px;box-shadow:0 6px 16px rgba(0,0,0,.18);background:var(--stage)}
 .mini-cap{font-size:11px;color:var(--muted);text-align:center}
-.ups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .up{border:1px solid var(--line);border-radius:8px;padding:9px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .up .lbl{font-size:11px}
 .up-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

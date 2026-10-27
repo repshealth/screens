@@ -65,7 +65,7 @@
           <div class="field"><label for="f-t-${i}">${i === 0 ? "Cover headline <small>(usually your app name)</small>" : "Headline"}</label><input type="text" id="f-t-${i}" maxlength="70" autocomplete="off" placeholder="e.g. ${esc(ph[0])}"></div>
           <div class="field"><label for="f-g-${i}">Highlight words <small>(optional, copied from the headline)</small></label><input type="text" id="f-g-${i}" maxlength="50" autocomplete="off" placeholder="e.g. ${esc(ph[1] || "simple.")}"></div>
           <div class="field"><label for="f-d-${i}">${i === 0 ? "Tagline" : "Subtitle"}</label><textarea id="f-d-${i}" rows="2" maxlength="140" placeholder="e.g. ${esc(ph[2])}"></textarea></div>
-          <div class="ups">${up("p", "Phone screenshot", false)}${up("s", "Second screenshot", true)}${up("t", "Tablet screenshot", true)}</div>
+          <div class="ups">${up("p", "Phone screenshot", false)}${up("t", "Tablet screenshot", true)}</div>
           ${opt.minis && i < 6 ? `<div class="scr-nav"><button class="btn small" type="button" data-next="${i + 1}">Next screen</button></div>` : ""}
         </div>${opt.minis ? `<div class="mini-wrap"><canvas class="mini" aria-label="Preview of screen ${i + 1}"></canvas><span class="mini-cap">Rough preview</span></div>` : ""}</div>`;
       box.appendChild(d);
@@ -75,7 +75,7 @@
       q("#f-t-" + i).addEventListener("input", e => { sc().title = e.target.value; syncScreen(i); onChange(); });
       q("#f-g-" + i).addEventListener("input", e => { sc().hl = e.target.value; onChange(); });
       q("#f-d-" + i).addEventListener("input", e => { sc().copy = e.target.value; onChange(); });
-      [["p", "img", 1290], ["s", "img2", 1290], ["t", "tabletImg", 2064]].forEach(([id, key, max]) => {
+      [["p", "img", 1290], ["t", "tabletImg", 2064]].forEach(([id, key, max]) => {
         q(`#f-${id}f-${i}`).addEventListener("change", e => {
           const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
           S.processImage(f, max, "image/jpeg").then(url => { sc()[key] = url; syncScreen(i); onChange(); }).catch(() => {});
@@ -95,7 +95,7 @@
       [["t", "title"], ["g", "hl"], ["d", "copy"]].forEach(([id, k]) => { const el = q(`#f-${id}-${i}`); if (el.value !== s[k]) el.value = s[k]; });
       const st = q(`#f-scr-${i} .st`); st.textContent = s.title || "Not filled in yet"; st.classList.toggle("empty", !s.title);
       const chip = q(`#f-scr-${i} .chip`); chip.textContent = s.img ? "Screenshot added" : "Needs screenshot"; chip.classList.toggle("ok", !!s.img);
-      [["p", "img"], ["s", "img2"], ["t", "tabletImg"]].forEach(([id, key]) => { const el = q(`#f-${id}i-${i}`); el.hidden = !s[key]; if (s[key]) el.src = s[key]; q(`#f-${id}r-${i}`).hidden = !s[key]; });
+      [["p", "img"], ["t", "tabletImg"]].forEach(([id, key]) => { const el = q(`#f-${id}i-${i}`); el.hidden = !s[key]; if (s[key]) el.src = s[key]; q(`#f-${id}r-${i}`).hidden = !s[key]; });
     }
     function sync() {
       const b = get().brand;

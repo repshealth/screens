@@ -403,46 +403,6 @@
     return cy + r + L.H * 0.012;
   }
 
-  /* ---------- a phone held in an illustrated hand ---------- */
-  const TONES = { light: ["#F2CDB0", "#D7A283"], medium: ["#D9A47C", "#B47952"], tan: ["#B47A52", "#87542F"], deep: ["#7A4C32", "#4E2D1C"] };
-  function drawHeld(ctx, kind, o, E, tone, mirror) {
-    const d = DEVICE[kind]; let h = o.h, w = h * d.aspect; if (o.maxW && w > o.maxW) { w = o.maxW; h = w / d.aspect; }
-    const [skin, shade] = TONES[tone] || TONES.medium, edge = mix(shade, "#000000", 0.25);
-    const frame = fn => { ctx.save(); ctx.translate(o.cx, o.top + h / 2); if (o.angle) ctx.rotate(o.angle); ctx.scale(mirror ? -1 : 1, 1); fn(); ctx.restore(); };
-    const hz = (x0, x1, a, b) => { const g = ctx.createLinearGradient(x0, 0, x1, 0); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
-    /* Back of the hand and wrist, behind the phone. */
-    frame(() => {
-      ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.22)"; ctx.shadowBlur = w * 0.14; ctx.shadowOffsetY = w * 0.05;
-      ctx.beginPath(); ctx.moveTo(-w * 0.56, h * 0.3);
-      ctx.bezierCurveTo(-w * 0.6, h * 0.55, -w * 0.42, h * 0.7, -w * 0.36, h * 1.5);
-      ctx.lineTo(w * 0.64, h * 1.5);
-      ctx.bezierCurveTo(w * 0.64, h * 0.7, w * 0.7, h * 0.2, w * 0.62, -h * 0.06);
-      ctx.quadraticCurveTo(w * 0.55, -h * 0.1, w * 0.42, -h * 0.05); ctx.closePath();
-      ctx.fillStyle = hz(-w * 0.6, w * 0.7, skin, shade); ctx.fill(); ctx.restore();
-    });
-    drawDevice(ctx, kind, o, E);
-    /* Fingers wrap round the right edge; the thumb rests on the left. */
-    frame(() => {
-      const ft = h * 0.043, base = w * 0.68, tips = [0.45, 0.44, 0.45, 0.48];
-      [-0.03, 0.055, 0.14, 0.225].forEach((fy, k) => {
-        const y = h * fy, tx = w * tips[k], r = ft * (k === 3 ? 0.85 : 1);
-        ctx.beginPath(); ctx.moveTo(base, y - r);
-        ctx.lineTo(tx + r, y - r); ctx.arc(tx + r, y, r, -Math.PI / 2, Math.PI / 2, true); ctx.lineTo(base, y + r); ctx.closePath();
-        const g = ctx.createLinearGradient(0, y - r, 0, y + r); g.addColorStop(0, mix(skin, "#FFFFFF", 0.08)); g.addColorStop(0.55, skin); g.addColorStop(1, shade);
-        ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = alpha(edge, 0.45); ctx.lineWidth = w * 0.006; ctx.stroke();
-        ctx.fillStyle = alpha("#FFFFFF", 0.22); ctx.beginPath(); ctx.ellipse(tx + r * 0.95, y - r * 0.1, r * 0.55, r * 0.42, 0, 0, Math.PI * 2); ctx.fill();
-      });
-      ctx.beginPath(); ctx.moveTo(-w * 0.78, h * 0.52);
-      ctx.bezierCurveTo(-w * 0.74, h * 0.34, -w * 0.62, h * 0.24, -w * 0.5, h * 0.17);
-      ctx.bezierCurveTo(-w * 0.43, h * 0.13, -w * 0.36, h * 0.15, -w * 0.37, h * 0.2);
-      ctx.bezierCurveTo(-w * 0.38, h * 0.25, -w * 0.44, h * 0.3, -w * 0.48, h * 0.38);
-      ctx.bezierCurveTo(-w * 0.52, h * 0.46, -w * 0.52, h * 0.52, -w * 0.5, h * 0.58); ctx.closePath();
-      ctx.fillStyle = hz(-w * 0.78, -w * 0.36, shade, skin); ctx.fill(); ctx.strokeStyle = alpha(edge, 0.4); ctx.lineWidth = w * 0.006; ctx.stroke();
-      ctx.save(); ctx.translate(-w * 0.41, h * 0.175); ctx.rotate(-0.75);
-      ctx.fillStyle = alpha("#FFFFFF", 0.25); ctx.beginPath(); ctx.ellipse(0, 0, w * 0.05, w * 0.032, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-    });
-  }
-
   /* ---------- layouts (where text and phones go) ---------- */
   function logoHeader(ctx, L, align, y) {
     const logo = imgEl(L.brand.logo); if (!logo || L.i !== 0) return y;
@@ -466,6 +426,19 @@
     block(ctx, L.T, { x, y, maxW: L.W * 0.8, align });
   }
   const dev = (ctx, L, o) => drawDevice(ctx, L.k.kind, Object.assign({ img: L.k.img, i: L.i }, o), L.E);
+  /* Each screen shows only its own screenshot; phones may cross into the neighbouring screens.
+     place(j) gives phone j's position in its own screen, so the parts that cross a join line up. */
+  function spread(textAt, place) {
+    return function (ctx, L) {
+      const { W, H, i } = L;
+      if (textAt(i) === "bottom") bottomText(ctx, L, L.align === "center" ? "center" : "right"); else topText(ctx, L);
+      for (const j of [i - 1, i + 1, i]) {
+        if (j < 0 || j > 6) continue;
+        const kj = L.kOf(j), p = place(j, W, H);
+        drawDevice(ctx, kj.kind, Object.assign({}, p, { cx: p.cx + (j - i) * W, img: kj.img, i: j }), L.E);
+      }
+    };
+  }
   const LAYOUTS = {
     classic: { name: "Classic", desc: "Tilted cover, then upright", draw(ctx, L) {
       const { W, H, i, k } = L, tilt = k.tablet ? -0.14 : -0.3;
@@ -473,8 +446,7 @@
       else if (i === 1) { dev(ctx, L, { cx: W * 0.5, top: -H * 0.17, h: H * 0.8, maxW: W * 0.92, angle: tilt }); bottomText(ctx, L, L.align === "center" ? "center" : "right"); }
       else {
         const y = topText(ctx, L), top = Math.max(y + H * 0.045, H * 0.28);
-        if (k.img2 && !k.tablet) { dev(ctx, L, { cx: W * 0.37, top, h: H * 0.78, maxW: W * 0.62 }); dev(ctx, L, { cx: W * 0.68, top: top + H * 0.13, h: H * 0.72, maxW: W * 0.58, img: k.img2, i: i + 1 }); }
-        else dev(ctx, L, { cx: W / 2, top, h: H * 0.82, maxW: W * 0.82 });
+        dev(ctx, L, { cx: W / 2, top, h: H * 0.82, maxW: W * 0.82 });
       }
     } },
     centred: { name: "Centred", desc: "Whole phone, centred", draw(ctx, L) {
@@ -496,43 +468,26 @@
       const { W, H } = L, y = topText(ctx, L);
       dev(ctx, L, { cx: W / 2, top: Math.max(y + H * 0.04, H * 0.26), h: H * 1.15, maxW: W * 0.94 });
     } },
-    pair: { name: "Pair", desc: "Two phones on every screen", draw(ctx, L) {
-      const { W, H, i, k } = L, y = topText(ctx, L), top = Math.max(y + H * 0.05, H * 0.3);
-      if (k.tablet) { dev(ctx, L, { cx: W / 2, top, h: H * 0.82, maxW: W * 0.82 }); return; }
-      const second = k.img2 || imgEl((L.screens[(i + 1) % 7] || {}).img);
-      dev(ctx, L, { cx: W * 0.35, top, h: H * 0.74, maxW: W * 0.6, angle: -0.07, img: second, i: i + 1 });
-      dev(ctx, L, { cx: W * 0.65, top: top + H * 0.1, h: H * 0.74, maxW: W * 0.6, angle: 0.05 });
-    } },
-    span: { name: "Span", desc: "One phone across screens 1 and 2", draw(ctx, L) {
+    span: { name: "Span", desc: "Cover phone crosses into screen 2", draw(ctx, L) {
       const { W, H, i } = L;
-      if (i > 1) return LAYOUTS.classic.draw(ctx, L);
-      const k0 = L.kOf(0), tilt = k0.tablet ? -0.16 : -0.32;
+      const k0 = L.kOf(0), k1 = L.kOf(1), tilt = k0.tablet ? -0.16 : -0.32;
+      const p1 = { cx: W * 0.8, top: H * 0.3, h: H * 0.82, maxW: W * 0.8, angle: tilt, img: k1.img, i: 1 };
+      if (i > 1) { LAYOUTS.classic.draw(ctx, L); if (i === 2) drawDevice(ctx, k1.kind, Object.assign({}, p1, { cx: p1.cx - W }), L.E); return; }
       topText(ctx, L, i === 1 && L.align !== "center" ? "left" : undefined);
-      if (i === 1) { const k1 = L.kOf(1); drawDevice(ctx, k1.kind, { cx: W * 0.8, top: H * 0.3, h: H * 0.82, maxW: W * 0.8, angle: tilt, img: k1.img, i: 1 }, L.E); }
+      if (i === 1) drawDevice(ctx, k1.kind, p1, L.E);
       drawDevice(ctx, k0.kind, { cx: W - i * W, top: H * 0.36, h: H * 0.92, maxW: W, angle: tilt, img: k0.img, i: 0 }, L.E);
     } },
-    flow: { name: "Flow", desc: "Phones bridge into the next screen", draw(ctx, L) {
-      const { W, H, i } = L; topText(ctx, L);
-      for (const j of [i - 1, i]) {
-        if (j < 0 || j > 6) continue;
-        const kj = L.kOf(j);
-        drawDevice(ctx, kj.kind, { cx: (j - i) * W + W * 0.9, top: H * (j % 2 ? 0.42 : 0.35), h: H * 0.76, maxW: W * 0.7, angle: j % 2 ? 0.09 : -0.09, img: kj.img, i: j }, L.E);
-      }
-    } },
-    hand: { name: "In hand", desc: "Phone held in a hand", draw(ctx, L) {
-      const { W, H, i, k } = L, y = topText(ctx, L), top = Math.max(y + H * 0.06, H * 0.3);
-      if (k.tablet) return dev(ctx, L, { cx: W / 2, top, h: H * 0.8, maxW: W * 0.84 });
-      drawHeld(ctx, k.kind, { cx: W * (i % 2 ? 0.5 : 0.53), top, h: H * 0.74, maxW: W * 0.64, angle: i % 2 ? 0.07 : -0.07, img: k.img, i }, L.E, L.tone, i % 2 === 1);
-    } },
-    fan: { name: "Fan", desc: "Three phones fanned out", draw(ctx, L) {
-      const { W, H, i, k } = L, y = topText(ctx, L, "center"), top = Math.max(y + H * 0.06, H * 0.32);
-      if (k.tablet) return dev(ctx, L, { cx: W / 2, top, h: H * 0.8, maxW: W * 0.84 });
-      const a = L.kOf((i + 6) % 7), b = L.kOf((i + 1) % 7);
-      drawDevice(ctx, a.kind, { cx: W * 0.26, top: top + H * 0.08, h: H * 0.64, maxW: W * 0.48, angle: -0.2, img: k.img2 || a.img, i: (i + 6) % 7 }, L.E);
-      drawDevice(ctx, b.kind, { cx: W * 0.74, top: top + H * 0.08, h: H * 0.64, maxW: W * 0.48, angle: 0.2, img: b.img, i: (i + 1) % 7 }, L.E);
-      dev(ctx, L, { cx: W / 2, top, h: H * 0.74, maxW: W * 0.55 });
-    } },
-    angled: { name: "Angled", desc: "Big phone bleeding off the corner", draw(ctx, L) {
+    flow: { name: "Flow", desc: "Tilted phones lean into the next screen", draw: spread(() => "top", (j, W, H) => ({ cx: W * 0.9, top: H * (j % 2 ? 0.35 : 0.42), h: H * 0.76, maxW: W * 0.7, angle: j % 2 ? 0.09 : -0.09 })) },
+    bridge: { name: "Bridge", desc: "Pairs of phones meet at the join", draw: spread(() => "top", (j, W, H) => j === 0
+      ? { cx: W * 0.5, top: H * 0.4, h: H * 0.8, maxW: W * 0.78 }
+      : { cx: W * (j % 2 ? 0.74 : 0.26), top: H * 0.4, h: H * 0.82, maxW: W * 0.76, angle: j % 2 ? -0.17 : 0.17 }) },
+    stagger: { name: "Stagger", desc: "Upright phones, high then low", draw: spread(() => "top", (j, W, H) => ({ cx: W * 0.74, top: H * (j % 2 ? 0.31 : 0.43), h: H * 0.8, maxW: W * 0.76 })) },
+    diagonal: { name: "Diagonal", desc: "Phones slide down into the next screen", draw: spread(() => "top", (j, W, H) => ({ cx: W * 0.6, top: H * 0.4, h: H * 0.9, maxW: W * 0.86, angle: -0.27 })) },
+    wave: { name: "Wave", desc: "Text swaps top and bottom", draw: spread(j => (j % 2 ? "bottom" : "top"), (j, W, H) => j % 2
+      ? { cx: W * 0.34, top: -H * 0.12, h: H * 0.8, maxW: W * 0.76, angle: 0.1 }
+      : { cx: W * 0.68, top: H * 0.4, h: H * 0.82, maxW: W * 0.76, angle: -0.1 }) },
+    rise: { name: "Rise", desc: "Each phone sits higher than the last", draw: spread(() => "top", (j, W, H) => ({ cx: W * 0.76, top: H * (0.58 - j * 0.04), h: H * 0.8, maxW: W * 0.76, angle: -0.05 })) },
+    angled: { name: "Angled", desc: "Big phone off the corner", draw(ctx, L) {
       const { W, H, i, k } = L, y = topText(ctx, L), dir = i % 2 ? -1 : 1;
       dev(ctx, L, { cx: W * (0.5 + 0.12 * dir), top: Math.max(y + H * 0.08, H * 0.34), h: H * 0.95, maxW: W, angle: 0.24 * dir * (k.tablet ? 0.5 : 1) });
     } }
@@ -541,14 +496,14 @@
   /* ---------- compose ---------- */
   function kindsFor(size, sc) {
     if (size.form === "tablet" && sc.tabletImg) return { kind: size.platform === "apple" ? "ipad" : "atablet", img: imgEl(sc.tabletImg), tablet: true };
-    return { kind: size.platform === "apple" ? "iphone" : "android", img: imgEl(sc.img), img2: sc.img2 ? imgEl(sc.img2) : null };
+    return { kind: size.platform === "apple" ? "iphone" : "android", img: imgEl(sc.img) };
   }
   function screenText(i, data, opts) {
     const sc = data.screens[i] || {};
     if (opts && opts.sampleFill && !sc.title && !sc.copy) { const s = SAMPLE[i]; return { title: i === 0 ? (data.brand.appName || s[0]) : s[0], hl: s[1], copy: s[2] }; }
     return { title: sc.title || "", hl: sc.hl || "", copy: sc.copy || "" };
   }
-  function normDesign(d) { d = d || {}; return { style: STYLES[d.style] ? d.style : "glow", pattern: PATTERNS[d.pattern] ? d.pattern : "none", layout: LAYOUTS[d.layout] ? d.layout : "classic", tone: TONES[d.tone] ? d.tone : "medium" }; }
+  function normDesign(d) { d = d || {}; return { style: STYLES[d.style] ? d.style : "glow", pattern: PATTERNS[d.pattern] ? d.pattern : "none", layout: LAYOUTS[d.layout] ? d.layout : "classic" }; }
   function drawScreen(ctx, W, H, size, i, data, design, opts) {
     design = normDesign(design);
     const brand = data.brand, p = pal(brand), font = FW[brand.font] !== undefined ? brand.font : "Montserrat";
@@ -558,7 +513,7 @@
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
     st.paint(ctx, W, H);
     ctx.save(); PATTERNS[design.pattern].draw(ctx, W, H, { i, n: 7, p, fg: st.title, brand, font }); ctx.restore();
-    LAYOUTS[design.layout].draw(ctx, { W, H, i, T, E, k: kindsFor(size, sc), kOf: j => kindsFor(size, data.screens[j] || {}), tone: design.tone, brand, screens: data.screens, pad: W * 0.085, align: st.align || "left" });
+    LAYOUTS[design.layout].draw(ctx, { W, H, i, T, E, k: kindsFor(size, sc), kOf: j => kindsFor(size, data.screens[j] || {}), brand, screens: data.screens, pad: W * 0.085, align: st.align || "left" });
     ctx.restore();
   }
   function drawFeature(ctx, W, H, data, design, opts) {
@@ -578,9 +533,9 @@
   }
 
   /* ---------- brief data ---------- */
-  function emptyScreens() { return Array.from({ length: 7 }, () => ({ title: "", hl: "", copy: "", img: null, img2: null, tabletImg: null })); }
+  function emptyScreens() { return Array.from({ length: 7 }, () => ({ title: "", hl: "", copy: "", img: null, tabletImg: null })); }
   function emptyBrief() { return { kind: "store-screen-brief", version: 3, contact: { name: "", email: "", notes: "" }, brand: { appName: "", logo: null, primary: "#6C55A3", accent: "#F5B83D", dark: null, light: null, font: "Montserrat", badges: ["", ""] }, screens: emptyScreens() }; }
-  function sampleBrief() { const b = emptyBrief(); b.brand.appName = "Forge Coaching"; b.brand.badges = ["4.9 rating", "10K+ members"]; b.screens = SAMPLE.map(x => ({ title: x[0], hl: x[1], copy: x[2], img: null, img2: null, tabletImg: null })); return b; }
+  function sampleBrief() { const b = emptyBrief(); b.brand.appName = "Forge Coaching"; b.brand.badges = ["4.9 rating", "10K+ members"]; b.screens = SAMPLE.map(x => ({ title: x[0], hl: x[1], copy: x[2], img: null, tabletImg: null })); return b; }
   function cleanBrief(d) {
     const b = emptyBrief(); d = d || {};
     const hex = v => (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v.toUpperCase() : null);
@@ -589,7 +544,7 @@
     const br = d.brand || {}, ct = d.contact || {};
     b.contact = { name: s(ct.name, 80), email: s(ct.email, 120), notes: s(ct.notes, 2000) };
     b.brand = { appName: s(br.appName, 40), logo: img(br.logo), primary: hex(br.primary) || b.brand.primary, accent: hex(br.accent) || b.brand.accent, dark: hex(br.dark), light: hex(br.light), font: FW[br.font] !== undefined ? br.font : "Montserrat", badges: [0, 1].map(k => s((br.badges || [])[k], 22)) };
-    b.screens = b.screens.map((e, i) => { const x = (d.screens || [])[i] || {}; return { title: s(x.title, 80), hl: s(x.hl, 60), copy: s(x.copy, 160), img: img(x.img), img2: img(x.img2), tabletImg: img(x.tabletImg) }; });
+    b.screens = b.screens.map((e, i) => { const x = (d.screens || [])[i] || {}; return { title: s(x.title, 80), hl: s(x.hl, 60), copy: s(x.copy, 160), img: img(x.img), tabletImg: img(x.tabletImg) }; });
     return b;
   }
   function processImage(file, maxW, type) {
@@ -611,7 +566,7 @@
   }
 
   global.SSS = {
-    FONTS, FW, TONES, SIZES, PREVIEW_SIZE, DEVICE, SAMPLE, STYLES, PATTERNS, LAYOUTS,
+    FONTS, FW, SIZES, PREVIEW_SIZE, DEVICE, SAMPLE, STYLES, PATTERNS, LAYOUTS,
     pal, mix, alpha, rr, pad2, ensureFonts, imgEl, setOnImage: fn => { onImage = fn; },
     drawScreen, drawFeature, normDesign, emptyBrief, sampleBrief, cleanBrief, processImage
   };

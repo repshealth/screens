@@ -176,13 +176,12 @@
     document.querySelectorAll('#pick-style input').forEach(r => { styleCv[r.value] = r.parentNode.querySelector("canvas"); });
     document.querySelectorAll('#pick-pattern input').forEach(r => { patternCv[r.value] = r.parentNode.querySelector("canvas"); });
     document.querySelectorAll('#pick-layout input').forEach(r => { layoutCv[r.value] = r.parentNode.querySelector("canvas"); });
-    $("#pick-tone").innerHTML = Object.entries(S.TONES).map(([id, c]) => `<label><input class="vh" type="radio" name="tone" value="${id}"><span><i style="width:18px;height:18px;border-radius:50%;display:inline-block;background:linear-gradient(135deg,${c[0]},${c[1]})"></i>${id[0].toUpperCase() + id.slice(1)}</span></label>`).join("");
-    ["style", "pattern", "layout", "tone"].forEach(k => document.querySelectorAll(`input[name="${k}"]`).forEach(r => r.addEventListener("change", e => { design[k] = e.target.value; syncPicks(); designChanged(); })));
+    ["style", "pattern", "layout"].forEach(k => document.querySelectorAll(`input[name="${k}"]`).forEach(r => r.addEventListener("change", e => { design[k] = e.target.value; syncPicks(); designChanged(); })));
   }
-  function syncPicks() { ["style", "pattern", "layout", "tone"].forEach(k => document.querySelectorAll(`input[name="${k}"]`).forEach(r => { r.checked = r.value === design[k]; })); $("#tone-field").hidden = design.layout !== "hand"; }
+  function syncPicks() { ["style", "pattern", "layout"].forEach(k => document.querySelectorAll(`input[name="${k}"]`).forEach(r => { r.checked = r.value === design[k]; })); }
   $("#shuffle").addEventListener("click", () => {
     const r = o => { const k = Object.keys(o); return k[Math.floor(Math.random() * k.length)]; };
-    design = { style: r(S.STYLES), pattern: r(S.PATTERNS), layout: r(S.LAYOUTS), tone: design.tone || "medium" }; syncPicks(); designChanged();
+    design = { style: r(S.STYLES), pattern: r(S.PATTERNS), layout: r(S.LAYOUTS) }; syncPicks(); designChanged();
   });
   let designT = null;
   function designChanged() {
@@ -244,7 +243,7 @@
     const size = S.SIZES.find(s => s.id === S.PREVIEW_SIZE[prefs.device]), cssW = size.form === "tablet" ? 260 : 180;
     shots.forEach((cv, i) => { cv.style.width = cssW + "px"; cv.width = Math.round(cssW * DPR()); cv.height = Math.round(cv.width * size.h / size.w); S.drawScreen(cv.getContext("2d"), cv.width, cv.height, size, i, brief, design); });
     Object.entries(styleCv).forEach(([id, cv]) => multi(cv, 3, [0, 1, 2], Object.assign({}, design, { style: id })));
-    Object.entries(layoutCv).forEach(([id, cv]) => multi(cv, 2, [0, 1], Object.assign({}, design, { layout: id })));
+    Object.entries(layoutCv).forEach(([id, cv]) => multi(cv, 2, [1, 2], Object.assign({}, design, { layout: id })));
     Object.entries(patternCv).forEach(([id, cv]) => {
       cv.width = cv.height = Math.round(26 * DPR()); const ctx = cv.getContext("2d"), V = 220, p = S.pal(brief.brand);
       const st = S.STYLES[design.style].style({ i: 2, p });
