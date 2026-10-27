@@ -1,6 +1,9 @@
-# Publishes the public/ folder to GitHub Pages (preview only: no API, briefs are passed as files).
-# In the repo: Settings -> Pages -> Source: GitHub Actions.
-name: Deploy preview to GitHub Pages
+# Publishes public/ to GitHub Pages and writes public/config.js from the repo's settings:
+#   Secret   BRIEFS_DROP_KEY   fine-grained token: Contents read/write on the briefs repo only
+#   Variable BRIEFS_PUBLIC_KEY shown in the studio after you create the passphrase
+#   Variable BRIEFS_REPO       optional, defaults to <owner>/screens-briefs
+# Repo settings: Pages -> Source must be "GitHub Actions".
+name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
@@ -20,6 +23,18 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Write config.js
+        env:
+          REPO: ${{ vars.BRIEFS_REPO || format('{0}/screens-briefs', github.repository_owner) }}
+          DROP_KEY: ${{ secrets.BRIEFS_DROP_KEY }}
+          PUBLIC_KEY: ${{ vars.BRIEFS_PUBLIC_KEY }}
+        run: |
+          node -e '
+            const c = { repo: process.env.REPO, dropKey: process.env.DROP_KEY || "", publicKey: (process.env.PUBLIC_KEY || "").replace(/\s+/g, "") };
+            if (!c.dropKey) { c.repo = ""; console.log("::warning::BRIEFS_DROP_KEY is not set, so the site deploys in preview mode."); }
+            require("fs").writeFileSync("public/config.js", "window.SSS_CONFIG = " + JSON.stringify(c) + ";\n");
+            console.log("Briefs repo:", c.repo || "(preview mode)", "| public key:", c.publicKey ? "set" : "not set yet");
+          '
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

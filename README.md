@@ -1,103 +1,99 @@
 # Reps Screens
 
-Reps' App Store and Google Play screenshot builder.
+App Store and Google Play screenshot builder, hosted entirely on GitHub.
 
-- **Client brief** at `/`: clients enter their branding, 7 headlines and screenshots, then submit.
-- **Admin studio** at `/admin`: pick a submitted brief from the dropdown, choose a style, background pattern and phone layout, then download every store size as one ZIP.
+- **Client form** (`/`): clients add their branding, 7 headlines and screenshots, then click Submit.
+- **Studio** (`/admin/`): submitted briefs appear in a dropdown. Pick one, choose a style, background pattern and phone layout, and download every store size as one ZIP.
 
-It runs on Cloudflare Pages. Pages Functions handle submissions and briefs are stored in Workers KV. All of it fits in Cloudflare's free plan.
+Live at `https://repshealth.github.io/screens/` and `https://repshealth.github.io/screens/admin/`.
 
-## What's in here
+## How it works without a server
+
+GitHub Pages can only serve files, so the client form saves each brief straight into a **separate private repo** (`screens-briefs`) through GitHub's API, using a key that can only touch that one repo.
+
+That key has to ship inside the public page, so anyone who digs through the page code could find it. To keep client data private anyway, **every brief is encrypted in the client's browser** before it's sent:
+
+- The client form locks each brief with the studio's public key.
+- Only the studio can unlock briefs, using a passphrase you choose. The studio's private key is stored in the briefs repo, encrypted with that passphrase.
+- Someone holding the key could add junk files or delete briefs (git history keeps deleted files), but they can't read anything.
+
+## Setup (about 10 minutes, one time)
+
+### 1. Create the briefs repo
+On GitHub, create a new **private** repo named `screens-briefs` under `repshealth`. Tick **Add a README file** so it isn't empty.
+
+### 2. Create the repo key
+1. On GitHub, go to **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
+2. **Resource owner:** repshealth.
+3. **Expiration:** the longest allowed. Put a reminder in your calendar to renew it.
+4. **Repository access:** Only select repositories → `screens-briefs`. Pick only this one repo.
+5. **Permissions:** Repository permissions → **Contents: Read and write**. Leave everything else at No access.
+6. Generate the token and copy it.
+
+### 3. Add it to the screens repo
+In `repshealth/screens`, go to **Settings → Secrets and variables → Actions**:
+- **Secrets** tab → New repository secret → name `BRIEFS_DROP_KEY`, value: the token.
+
+If you named the briefs repo something else, also add a variable `BRIEFS_REPO` with the value `owner/name`.
+
+### 4. Publish with GitHub Actions
+In `repshealth/screens`, go to **Settings → Pages → Source** and choose **GitHub Actions**. Then go to **Actions → Deploy to GitHub Pages → Run workflow**.
+
+### 5. Create the studio passphrase
+1. Open `/admin/`. It asks you to create a studio passphrase. Use at least 10 characters and **store it in your password manager**: without it, submitted briefs can't be opened.
+2. The studio then shows a **Connect the client form** box with a public key.
+3. Copy the key, then in `repshealth/screens` go to **Settings → Secrets and variables → Actions → Variables** and add a new variable named `BRIEFS_PUBLIC_KEY` with the key as its value.
+4. Run the deploy workflow again.
+
+Done. The client form now submits straight into the studio dropdown.
+
+## Day to day
+
+- Send clients the link from **Copy client form link** in the studio.
+- Each browser asks for the passphrase once, then remembers it until you click **Lock studio**.
+- Status (New or Done) and your design choices are saved to `state.json` in the briefs repo, so they follow you to any device.
+- **Before the key expires**, generate a new one (step 2) and update the `BRIEFS_DROP_KEY` secret, then re-run the deploy.
+
+## Preview mode
+
+If `BRIEFS_DROP_KEY` isn't set, the site still works:
+- The client form downloads the brief as a `.json` file instead of sending it.
+- The studio opens with sample content and an **Open brief file** button for those downloaded files.
+
+## Files
 
 | Path | What it is |
 | --- | --- |
-| `public/index.html` | Client brief form |
-| `public/admin/index.html` | Admin studio |
-| `public/assets/engine.js` | Screenshot renderer: 8 styles, 12 patterns, 7 layouts, device frames, export sizes |
-| `public/assets/form.js` | The brand + 7 screens form, shared by both pages |
-| `public/assets/client.js`, `admin.js` | Page logic |
-| `functions/api/briefs/` | API: submit (public), list/open/update/delete (admin key) |
-| `lib/http.js` | Shared API helpers |
-| `wrangler.toml` | Cloudflare config and KV binding |
+| `public/index.html` | Client form |
+| `public/admin/index.html` | Studio |
+| `public/assets/engine.js` | Screenshot renderer: styles, patterns, layouts, device frames, export sizes |
+| `public/assets/form.js` | Brand + 7 screens form, shared by both pages |
+| `public/assets/crypto.js` | Brief encryption (RSA-OAEP 3072 + AES-256-GCM; passphrase via PBKDF2) |
+| `public/assets/store.js` | GitHub API client for the briefs repo |
+| `public/config.js` | Empty placeholder; the deploy workflow fills it in |
+| `.github/workflows/pages.yml` | Deploy to GitHub Pages and write `config.js` |
 
-## Quick preview on GitHub Pages
+### Briefs repo layout
 
-GitHub Pages can host the pages but not the API, so the site runs in **preview mode** there:
-
-- The client form works fully. On submit, it downloads the brief as a `.json` file instead of sending it.
-- The admin page skips the login and opens with sample content. **Open brief file** loads a brief the form downloaded.
-- All designs, previews and the ZIP export work as normal.
-
-To set it up:
-
-1. Push this folder to a GitHub repo, with the branch named `main`.
-2. In the repo, go to **Settings → Pages → Source** and choose **GitHub Actions**. The included workflow (`.github/workflows/pages.yml`) publishes the `public` folder on every push.
-3. Open `https://<you>.github.io/<repo>/` for the client form and `https://<you>.github.io/<repo>/admin/` for the studio.
-
-When you move to Cloudflare (below), the same code detects the API and switches to live submissions and the brief dropdown automatically.
-
-## Deploy (about 10 minutes)
-
-You need a Cloudflare account and Node 18 or newer.
-
-1. **Install and sign in**
-   ```bash
-   npm install
-   npx wrangler login
-   ```
-2. **Create the briefs store**
-   ```bash
-   npx wrangler kv namespace create BRIEFS
-   ```
-   Copy the `id` it prints into `wrangler.toml` in place of `REPLACE_WITH_YOUR_KV_NAMESPACE_ID`.
-3. **Create the Pages project and deploy**
-   ```bash
-   npx wrangler pages project create reps-screens --production-branch main
-   npx wrangler pages deploy
-   ```
-4. **Set your admin key.** Make it long and random, as it's the only lock on `/admin`.
-   ```bash
-   npx wrangler pages secret put ADMIN_KEY --project-name reps-screens
-   ```
-   Then run `npx wrangler pages deploy` once more so the key takes effect.
-5. Open `https://reps-screens.pages.dev/admin`, enter the key, and use **Copy client form link** to get the link for clients.
-
-### Deploying from GitHub instead
-
-1. Push this folder to a GitHub repo.
-2. In the Cloudflare dashboard, go to **Workers & Pages → Create → Pages → Connect to Git** and pick the repo.
-3. Set the build command to none and the output directory to `public`.
-4. Complete step 2 above (the KV namespace and the id in `wrangler.toml`).
-5. Under **Settings → Variables and Secrets**, add `ADMIN_KEY` as a secret.
-
-Every push to `main` then redeploys automatically. `.dev.vars` is git-ignored, so your local key never gets pushed.
-
-### Custom domain
-
-In the Pages project, open **Custom domains** and add, for example, `screens.yourdomain.com`. Clients get the root of that domain and you use `/admin`.
-
-## Run it locally
-
-```bash
-echo "ADMIN_KEY=choose-a-local-key" > .dev.vars
-npm run dev
 ```
-
-Then open http://127.0.0.1:8788 for the client form and http://127.0.0.1:8788/admin for the studio. Local submissions are stored in `.wrangler/` and never touch your live data.
-
-## How it works
-
-- **Submitting.** The client's screenshots are resized in their browser (phones to 1290 px wide, tablets to 2064 px) and sent as one JSON brief. A full brief is usually 2 to 8 MB, and the API accepts up to 24 MB. A hidden honeypot field quietly drops simple spam bots.
-- **Admin access.** Every admin request carries `Authorization: Bearer <ADMIN_KEY>`. The key is checked in constant time and remembered in your browser until you sign out. For stronger protection, add Cloudflare Access (Zero Trust, free for small teams) in front of `/admin*` and `/api/briefs*` with an email rule. Leave POST `/api/briefs` public, because clients need it.
-- **Design choices** are saved back onto each brief. Reopening a brief brings back the style, pattern and layout you last used.
-- **Exports** are JPG at 93% quality with no alpha channel. App Store Connect rejects transparency, and Google Play accepts JPG.
+keys/studio-key.json        studio key pair (private half encrypted with the passphrase)
+briefs/<id>.brief           encrypted brief: brand, copy, screenshots
+briefs/<id>.meta            encrypted summary used for the dropdown
+state.json                  status and saved design per brief (not sensitive)
+```
 
 ## Adding a design
 
 All designs live in `public/assets/engine.js`:
 
-- **Styles** (`STYLES`) return a `paint` function and the title, highlight and copy colours.
-- **Patterns** (`PATTERNS`) draw over the background. They work in strip coordinates (`c.i * W`), so lines and waves flow from one screen into the next.
-- **Layouts** (`LAYOUTS`) place the text and phones using `topText`, `bottomText` and `dev`.
+- **Styles** (`STYLES`): background paint plus title, highlight and copy colours.
+- **Patterns** (`PATTERNS`): background decoration. Patterns are drawn across the whole 7-screen strip, so they flow from one screen into the next.
+- **Layouts** (`LAYOUTS`): where the text and phones go.
 
-Add an entry to any of the three and it appears in the admin pickers automatically.
+Add an entry to any of the three and it appears in the studio automatically.
+
+## Run locally
+
+```bash
+npm run dev    # serves public/ on http://localhost:8080 in preview mode
+```

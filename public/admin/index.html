@@ -17,11 +17,14 @@
 <div class="login" id="login" hidden>
   <section class="step">
     <a class="brand" href="./" aria-label="Reps Screens"><img src="../assets/reps-mark.png" alt="" width="46" height="24"><span class="wm">REPS</span><span class="wm-sub">Screens</span></a>
-    <p class="hint">Enter the admin key you set in Cloudflare.</p>
-    <form id="login-form" class="field">
-      <label for="key">Admin key</label>
-      <input type="password" id="key" autocomplete="current-password" required>
-      <div class="row"><button class="btn primary" type="submit">Sign in</button><p class="status" id="login-status" aria-live="polite"></p></div>
+    <h2 id="gate-title">Unlock the studio</h2>
+    <p class="hint" id="gate-hint">Enter the studio passphrase to read submitted briefs.</p>
+    <form id="gate-form" class="field" autocomplete="on">
+      <input type="text" name="username" value="Reps Screens Studio" autocomplete="username" hidden>
+      <label for="pass">Studio passphrase</label>
+      <input type="password" id="pass" autocomplete="current-password" required minlength="10">
+      <div class="field" id="pass2-wrap" hidden><label for="pass2">Type it again</label><input type="password" id="pass2" autocomplete="new-password"></div>
+      <div class="row"><button class="btn primary" type="submit" id="gate-btn">Unlock</button><p class="status" id="gate-status" aria-live="polite"></p></div>
     </form>
   </section>
 </div>
@@ -35,12 +38,18 @@
     </div>
     <div class="row">
       <button class="btn small" id="copy-link" type="button">Copy client form link</button>
-      <button class="btn small" id="sign-out" type="button">Sign out</button>
+      <button class="btn small" id="sign-out" type="button">Lock studio</button>
     </div>
   </header>
 
   <div class="layout">
     <div class="rail">
+      <section class="step" id="setup-note" aria-labelledby="h-setup" hidden>
+        <h2 id="h-setup">Connect the client form</h2>
+        <p class="hint">Add this as a repository variable named <b>BRIEFS_PUBLIC_KEY</b> in the screens repo (Settings → Secrets and variables → Actions → Variables), then re-run the deploy. Until then, the client form downloads briefs instead of sending them.</p>
+        <textarea id="pubkey" rows="4" readonly spellcheck="false" style="font:12px/1.4 var(--f-mono)"></textarea>
+        <div class="row"><button class="btn small" id="copy-pubkey" type="button">Copy key</button></div>
+      </section>
       <section class="step" aria-labelledby="h-inbox">
         <h2 id="h-inbox"><span class="n">1</span><span class="grow">Brief</span><button class="btn small" id="refresh" type="button">Refresh</button></h2>
         <div class="inbox">
@@ -103,6 +112,9 @@
   </div>
 </div>
 
+<script src="../config.js"></script>
+<script src="../assets/crypto.js"></script>
+<script src="../assets/store.js"></script>
 <script src="../assets/engine.js"></script>
 <script src="../assets/form.js"></script>
 <script src="../assets/admin.js"></script>

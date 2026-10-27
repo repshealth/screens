@@ -59,26 +59,36 @@
     if (gaps && !armed) { armed = true; $("#submit").textContent = "Submit anyway"; st.textContent = `${gaps} screen${gaps > 1 ? "s are" : " is"} missing a headline or screenshot. You can submit now and send the rest later.`; return; }
     if (sending) return; sending = true; $("#submit").disabled = true; st.textContent = "Sending your brief…";
     try {
-      const body = JSON.stringify(Object.assign({}, brief, { website: $("#c-website").value }));
-      let res = null;
-      try { res = await fetch("api/briefs", { method: "POST", headers: { "content-type": "application/json" }, body }); } catch (e) { res = null; }
-      const isJson = res && (res.headers.get("content-type") || "").includes("application/json");
-      if (res && !isJson) {
-        /* Preview hosting (e.g. GitHub Pages) has no API: hand the brief over as a file instead. */
-        const name = (brief.brand.appName || "app").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "-app-store-brief.json";
-        const url = URL.createObjectURL(new Blob([JSON.stringify(brief)], { type: "application/json" })), a = document.createElement("a");
-        a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
-        $("#t-msg").textContent = "Preview mode: there's no server here yet, so your brief was downloaded as " + name + ". Open it in the admin studio with Open brief file.";
-        $("#app").hidden = true; $("#thanks").hidden = false; window.scrollTo(0, 0); sending = false; $("#submit").disabled = false; return;
-      }
-      if (!res) throw new Error("We couldn't send your brief. Check your connection and try again.");
-      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.error === "too_large" ? "Your screenshots are too large to send together. Try fewer or smaller images." : "We couldn't send your brief. Check your connection and try again."); }
-      try { localStorage.removeItem(KEY); } catch (e) {}
-      $("#t-name").textContent = brief.contact.name.split(" ")[0];
-      $("#app").hidden = true; $("#thanks").hidden = false; window.scrollTo(0, 0);
-    } catch (e) { st.textContent = e.message; st.classList.add("bad"); }
+      if ($("#c-website").value) { done(); return; } /* honeypot: quietly ignore bots */
+      const cfg = window.SSS_CONFIG || {};
+      if (!(cfg.repo && cfg.dropKey && cfg.publicKey)) { downloadInstead(); return; }
+      const pub = await SSSCrypto.importPublic(cfg.publicKey);
+      const now = new Date(), id = now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14) + "-" + SSSCrypto.b64(crypto.getRandomValues(new Uint8Array(6))).replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toLowerCase();
+      const meta = { id, appName: brief.brand.appName, name: brief.contact.name, email: brief.contact.email, submittedAt: now.toISOString(), screenshots: brief.screens.filter(x => x.img).length };
+      const files = {};
+      files["briefs/" + id + ".brief"] = await SSSCrypto.seal(pub, brief);
+      files["briefs/" + id + ".meta"] = await SSSCrypto.seal(pub, meta);
+      await new SSSRepo(cfg.repo, cfg.dropKey).commit(files, "New brief " + id);
+      done();
+    } catch (e) {
+      st.textContent = e.status === 413 || e.status === 422 ? "Your screenshots are too large to send together. Try fewer or smaller images." : "We couldn't send your brief. Check your connection and try again. Your answers are still saved on this device.";
+      st.classList.add("bad");
+    }
     sending = false; $("#submit").disabled = false;
   });
+  function done() {
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    $("#t-name").textContent = brief.contact.name.split(" ")[0];
+    $("#app").hidden = true; $("#thanks").hidden = false; window.scrollTo(0, 0);
+  }
+  /* Preview mode (no briefs inbox configured): hand the brief over as a file instead. */
+  function downloadInstead() {
+    const name = (brief.brand.appName || "app").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "-app-store-brief.json";
+    const url = URL.createObjectURL(new Blob([JSON.stringify(brief)], { type: "application/json" })), a = document.createElement("a");
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+    $("#t-msg").textContent = "Preview mode: the briefs inbox isn't connected yet, so your brief was downloaded as " + name + ". Open it in the studio with Open brief file.";
+    $("#app").hidden = true; $("#thanks").hidden = false; window.scrollTo(0, 0);
+  }
   $("#again").addEventListener("click", () => { brief = S.emptyBrief(); location.reload(); });
 
   checklist(); render();

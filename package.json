@@ -1,13 +1,9 @@
 {
-  "devDependencies": {
-    "wrangler": "^4.153.0"
-  },
   "name": "reps-screens",
   "version": "1.0.0",
   "private": true,
-  "description": "Reps Screens: App Store and Google Play screenshot builder",
+  "description": "Reps Screens: App Store and Google Play screenshot builder, hosted on GitHub Pages",
   "scripts": {
-    "dev": "wrangler pages dev public",
-    "deploy": "wrangler pages deploy"
+    "dev": "python3 -m http.server 8080 --directory public"
   }
 }
