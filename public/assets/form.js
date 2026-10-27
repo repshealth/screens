@@ -24,6 +24,8 @@
         <p class="sub">The highlight colour picks out key words in your headlines.</p></div>
       ${opt.adminColours ? `<div class="field"><span class="lbl">Background shades <small>(worked out from the brand colour unless set)</small></span>
         <div class="colors">${sw("dark", "Dark shade", true)}${sw("light", "Light shade", true)}</div></div>` : ""}
+      <div class="field"><span class="lbl">Cover badges <small>(optional: a rating, member count or award, shown on your first screen)</small></span>
+        <div class="grid2"><input type="text" id="f-b-0" maxlength="22" autocomplete="off" aria-label="Cover badge 1" placeholder="e.g. 4.9 rating"><input type="text" id="f-b-1" maxlength="22" autocomplete="off" aria-label="Cover badge 2" placeholder="e.g. 10K+ members"></div></div>
       <div class="field"><span class="lbl" id="f-font-lbl">Headline font</span>
         <div class="chipset" role="radiogroup" aria-labelledby="f-font-lbl">${S.FONTS.map(x => `<label><input class="vh" type="radio" name="f-font" value="${x.f}"><span style="font-family:'${x.f}',sans-serif;font-weight:${x.w}">${x.f}</span></label>`).join("")}</div></div>
     </section>
@@ -50,6 +52,7 @@
       q("#f-h-" + k).addEventListener("input", e => { let v = e.target.value.trim(); if (v && v[0] !== "#") v = "#" + v; if (/^#[0-9a-fA-F]{6}$/.test(v)) { get().brand[k] = v.toUpperCase(); q("#f-c-" + k).value = v; onChange(); } });
       const r = q("#f-r-" + k); if (r) r.addEventListener("click", () => { get().brand[k] = null; syncColours(); onChange(); });
     });
+    [0, 1].forEach(k => q("#f-b-" + k).addEventListener("input", e => { const b = get().brand; b.badges = (b.badges || ["", ""]).slice(); b.badges[k] = e.target.value; onChange(); }));
     root.querySelectorAll('input[name="f-font"]').forEach(r => r.addEventListener("change", e => { get().brand.font = e.target.value; onChange(); }));
 
     /* screens */
@@ -97,6 +100,7 @@
     function sync() {
       const b = get().brand;
       q("#f-app").value = b.appName; syncColours();
+      [0, 1].forEach(k => { const el = q("#f-b-" + k); const v = (b.badges || [])[k] || ""; if (el.value !== v) el.value = v; });
       root.querySelectorAll('input[name="f-font"]').forEach(r => { r.checked = r.value === b.font; });
       q("#f-logo-box").innerHTML = b.logo ? `<img alt="Logo preview" src="${b.logo}">` : "No logo"; q("#f-logo-rm").hidden = !b.logo;
       for (let i = 0; i < 7; i++) syncScreen(i);
