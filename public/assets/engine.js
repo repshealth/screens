@@ -182,7 +182,8 @@
     rr(ctx, x + w * 0.005, y + w * 0.005, w - w * 0.01, h - w * 0.01, r - w * 0.005); ctx.lineWidth = w * 0.007; ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.stroke();
     const sx = x + bz, sy = y + bz, sw = w - 2 * bz, sh = h - 2 * bz;
     ctx.save(); rr(ctx, sx, sy, sw, sh, Math.max(r - bz, 0)); ctx.clip();
-    if (o.img) cover(ctx, o.img, sx, sy, sw, sh); else drawPlaceholder(ctx, sx, sy, sw, sh, o.i || 0, E);
+    const shot = o.adapt ? adaptForTablet(o.src, sw / sh) : o.img;
+    if (shot) cover(ctx, shot, sx, sy, sw, sh); else drawPlaceholder(ctx, sx, sy, sw, sh, o.i || 0, E);
     ctx.restore();
     ctx.fillStyle = "#050506";
     if (d.notch === "island") { const iw = w * 0.28, ih = w * 0.082; rr(ctx, -iw / 2, sy + w * 0.028, iw, ih, ih / 2); ctx.fill(); }
@@ -425,78 +426,93 @@
     const y = logoHeader(ctx, L, align, y0);
     block(ctx, L.T, { x, y, maxW: L.W * 0.8, align });
   }
-  const dev = (ctx, L, o) => drawDevice(ctx, L.k.kind, Object.assign({ img: L.k.img, i: L.i }, o), L.E);
-  /* Each screen shows only its own screenshot; phones may cross into the neighbouring screens.
-     place(j) gives phone j's position in its own screen, so the parts that cross a join line up. */
-  function spread(textAt, place) {
-    return function (ctx, L) {
-      const { W, H, i } = L;
-      if (textAt(i) === "bottom") bottomText(ctx, L, L.align === "center" ? "center" : "right"); else topText(ctx, L);
-      for (const j of [i - 1, i + 1, i]) {
-        if (j < 0 || j > 6) continue;
-        const kj = L.kOf(j), p = place(j, W, H);
-        drawDevice(ctx, kj.kind, Object.assign({}, p, { cx: p.cx + (j - i) * W, img: kj.img, i: j }), L.E);
-      }
-    };
-  }
+  /* Layouts say where each screen's text goes and where its one phone sits.
+     The renderer also draws the neighbouring screens' phones, shifted by a screen width,
+     so any phone that crosses a join continues exactly into the next screen. */
+  const TOP = { pos: "top" }, BOTTOM = { pos: "bottom" };
+  const tiltFor = (k, a) => (k.tablet ? a * 0.5 : a);
   const LAYOUTS = {
-    classic: { name: "Classic", desc: "Tilted cover, then upright", draw(ctx, L) {
-      const { W, H, i, k } = L, tilt = k.tablet ? -0.14 : -0.3;
-      if (i === 0) { const y = topText(ctx, L); dev(ctx, L, { cx: W * 0.42, top: Math.max(y + H * 0.09, H * 0.36), h: H * 0.82, maxW: W * 0.92, angle: tilt }); }
-      else if (i === 1) { dev(ctx, L, { cx: W * 0.5, top: -H * 0.17, h: H * 0.8, maxW: W * 0.92, angle: tilt }); bottomText(ctx, L, L.align === "center" ? "center" : "right"); }
-      else {
-        const y = topText(ctx, L), top = Math.max(y + H * 0.045, H * 0.28);
-        dev(ctx, L, { cx: W / 2, top, h: H * 0.82, maxW: W * 0.82 });
-      }
-    } },
-    centred: { name: "Centred", desc: "Whole phone, centred", draw(ctx, L) {
-      const { W, H } = L, y = topText(ctx, L, "center"), top = Math.max(y + H * 0.04, H * 0.27);
-      dev(ctx, L, { cx: W / 2, top, h: H * 0.965 - top, maxW: W * 0.74 });
-    } },
-    tilted: { name: "Tilted", desc: "Phones lean left and right", draw(ctx, L) {
-      const { W, H, i, k } = L, y = topText(ctx, L), dir = i % 2 ? 1 : -1;
-      dev(ctx, L, { cx: W * (0.5 + 0.06 * dir), top: Math.max(y + H * 0.06, H * 0.32), h: H * 0.82, maxW: W * 0.8, angle: 0.15 * dir * (k.tablet ? 0.5 : 1) });
-    } },
-    below: { name: "Text below", desc: "Phone from the top", draw(ctx, L) {
-      const { W, H } = L; dev(ctx, L, { cx: W / 2, top: -H * 0.1, h: H * 0.74, maxW: W * 0.78 }); bottomText(ctx, L);
-    } },
-    side: { name: "Side peek", desc: "Phone hugs alternate edges", draw(ctx, L) {
-      const { W, H, i } = L, y = topText(ctx, L), right = i % 2 === 0;
-      dev(ctx, L, { cx: W * (right ? 0.7 : 0.3), top: Math.max(y + H * 0.05, H * 0.3), h: H * 0.82, maxW: W * 0.86 });
-    } },
-    zoom: { name: "Big zoom", desc: "Oversized, top of screen", draw(ctx, L) {
-      const { W, H } = L, y = topText(ctx, L);
-      dev(ctx, L, { cx: W / 2, top: Math.max(y + H * 0.04, H * 0.26), h: H * 1.15, maxW: W * 0.94 });
-    } },
-    span: { name: "Span", desc: "Cover phone crosses into screen 2", draw(ctx, L) {
-      const { W, H, i } = L;
-      const k0 = L.kOf(0), k1 = L.kOf(1), tilt = k0.tablet ? -0.16 : -0.32;
-      const p1 = { cx: W * 0.8, top: H * 0.3, h: H * 0.82, maxW: W * 0.8, angle: tilt, img: k1.img, i: 1 };
-      if (i > 1) { LAYOUTS.classic.draw(ctx, L); if (i === 2) drawDevice(ctx, k1.kind, Object.assign({}, p1, { cx: p1.cx - W }), L.E); return; }
-      topText(ctx, L, i === 1 && L.align !== "center" ? "left" : undefined);
-      if (i === 1) drawDevice(ctx, k1.kind, p1, L.E);
-      drawDevice(ctx, k0.kind, { cx: W - i * W, top: H * 0.36, h: H * 0.92, maxW: W, angle: tilt, img: k0.img, i: 0 }, L.E);
-    } },
-    flow: { name: "Flow", desc: "Tilted phones lean into the next screen", draw: spread(() => "top", (j, W, H) => ({ cx: W * 0.9, top: H * (j % 2 ? 0.35 : 0.42), h: H * 0.76, maxW: W * 0.7, angle: j % 2 ? 0.09 : -0.09 })) },
-    bridge: { name: "Bridge", desc: "Pairs of phones meet at the join", draw: spread(() => "top", (j, W, H) => j === 0
-      ? { cx: W * 0.5, top: H * 0.4, h: H * 0.8, maxW: W * 0.78 }
-      : { cx: W * (j % 2 ? 0.74 : 0.26), top: H * 0.4, h: H * 0.82, maxW: W * 0.76, angle: j % 2 ? -0.17 : 0.17 }) },
-    stagger: { name: "Stagger", desc: "Upright phones, high then low", draw: spread(() => "top", (j, W, H) => ({ cx: W * 0.74, top: H * (j % 2 ? 0.31 : 0.43), h: H * 0.8, maxW: W * 0.76 })) },
-    diagonal: { name: "Diagonal", desc: "Phones slide down into the next screen", draw: spread(() => "top", (j, W, H) => ({ cx: W * 0.6, top: H * 0.4, h: H * 0.9, maxW: W * 0.86, angle: -0.27 })) },
-    wave: { name: "Wave", desc: "Text swaps top and bottom", draw: spread(j => (j % 2 ? "bottom" : "top"), (j, W, H) => j % 2
-      ? { cx: W * 0.34, top: -H * 0.12, h: H * 0.8, maxW: W * 0.76, angle: 0.1 }
-      : { cx: W * 0.68, top: H * 0.4, h: H * 0.82, maxW: W * 0.76, angle: -0.1 }) },
-    rise: { name: "Rise", desc: "Each phone sits higher than the last", draw: spread(() => "top", (j, W, H) => ({ cx: W * 0.76, top: H * (0.58 - j * 0.04), h: H * 0.8, maxW: W * 0.76, angle: -0.05 })) },
-    angled: { name: "Angled", desc: "Big phone off the corner", draw(ctx, L) {
-      const { W, H, i, k } = L, y = topText(ctx, L), dir = i % 2 ? -1 : 1;
-      dev(ctx, L, { cx: W * (0.5 + 0.12 * dir), top: Math.max(y + H * 0.08, H * 0.34), h: H * 0.95, maxW: W, angle: 0.24 * dir * (k.tablet ? 0.5 : 1) });
-    } }
+    classic: { name: "Classic", desc: "Tilted cover, then upright",
+      text: (j, L) => (j === 1 ? { pos: "bottom", align: L.align === "center" ? "center" : "right" } : TOP),
+      phone: (j, L) => {
+        const { W, H, y, k } = L, tilt = tiltFor(k, -0.3);
+        if (j === 0) return { cx: W * 0.42, top: Math.max(y + H * 0.09, H * 0.36), h: H * 0.82, maxW: W * 0.92, angle: tilt };
+        if (j === 1) return { cx: W * 0.5, top: -H * 0.17, h: H * 0.8, maxW: W * 0.92, angle: tilt };
+        return { cx: W / 2, top: Math.max(y + H * 0.045, H * 0.28), h: H * 0.82, maxW: W * 0.82 };
+      } },
+    centred: { name: "Centred", desc: "Whole phone, centred",
+      text: () => ({ pos: "top", align: "center" }),
+      phone: (j, L) => { const top = Math.max(L.y + L.H * 0.04, L.H * 0.27); return { cx: L.W / 2, top, h: L.H * 0.965 - top, maxW: L.W * 0.74 }; } },
+    tilted: { name: "Tilted", desc: "Phones lean left and right", text: () => TOP,
+      phone: (j, L) => { const dir = j % 2 ? 1 : -1; return { cx: L.W * (0.5 + 0.06 * dir), top: Math.max(L.y + L.H * 0.06, L.H * 0.32), h: L.H * 0.82, maxW: L.W * 0.8, angle: tiltFor(L.k, 0.15 * dir) }; } },
+    below: { name: "Text below", desc: "Phone from the top", text: () => BOTTOM,
+      phone: (j, L) => ({ cx: L.W / 2, top: -L.H * 0.1, h: L.H * 0.74, maxW: L.W * 0.78 }) },
+    side: { name: "Side peek", desc: "Phone hugs alternate edges", text: () => TOP,
+      phone: (j, L) => ({ cx: L.W * (j % 2 ? 0.3 : 0.7), top: Math.max(L.y + L.H * 0.05, L.H * 0.3), h: L.H * 0.82, maxW: L.W * 0.86 }) },
+    zoom: { name: "Big zoom", desc: "Oversized, top of screen", text: () => TOP,
+      phone: (j, L) => ({ cx: L.W / 2, top: Math.max(L.y + L.H * 0.04, L.H * 0.26), h: L.H * 1.15, maxW: L.W * 0.94 }) },
+    span: { name: "Span", desc: "Cover phone crosses into screen 2",
+      text: (j, L) => (j === 1 ? { pos: "top", align: L.align === "center" ? "center" : "left" } : LAYOUTS.classic.text(j, L)),
+      phone: (j, L) => {
+        const { W, H, k } = L, tilt = tiltFor(k, -0.32);
+        if (j === 0) return { cx: W, top: H * 0.36, h: H * 0.92, maxW: W, angle: tilt };
+        if (j === 1) return { cx: W * 0.8, top: H * 0.3, h: H * 0.82, maxW: W * 0.8, angle: tilt };
+        return LAYOUTS.classic.phone(j, L);
+      } },
+    flow: { name: "Flow", desc: "Tilted phones lean into the next screen", text: () => TOP,
+      phone: (j, L) => ({ cx: L.W * 0.9, top: L.H * (j % 2 ? 0.35 : 0.42), h: L.H * 0.76, maxW: L.W * 0.7, angle: tiltFor(L.k, j % 2 ? 0.09 : -0.09) }) },
+    bridge: { name: "Bridge", desc: "Pairs of phones meet at the join", text: () => TOP,
+      phone: (j, L) => j === 0
+        ? { cx: L.W * 0.5, top: L.H * 0.4, h: L.H * 0.8, maxW: L.W * 0.78 }
+        : { cx: L.W * (j % 2 ? 0.74 : 0.26), top: L.H * 0.4, h: L.H * 0.82, maxW: L.W * 0.76, angle: tiltFor(L.k, j % 2 ? -0.17 : 0.17) } },
+    stagger: { name: "Stagger", desc: "Upright phones, high then low", text: () => TOP,
+      phone: (j, L) => ({ cx: L.W * 0.74, top: L.H * (j % 2 ? 0.31 : 0.43), h: L.H * 0.8, maxW: L.W * 0.76 }) },
+    diagonal: { name: "Diagonal", desc: "Phones slide down into the next screen", text: () => TOP,
+      phone: (j, L) => ({ cx: L.W * 0.6, top: L.H * 0.4, h: L.H * 0.9, maxW: L.W * 0.86, angle: tiltFor(L.k, -0.27) }) },
+    wave: { name: "Wave", desc: "Text swaps top and bottom",
+      text: (j, L) => (j % 2 ? { pos: "bottom", align: L.align === "center" ? "center" : "right" } : TOP),
+      phone: (j, L) => j % 2
+        ? { cx: L.W * 0.34, top: -L.H * 0.12, h: L.H * 0.8, maxW: L.W * 0.76, angle: tiltFor(L.k, 0.1) }
+        : { cx: L.W * 0.68, top: L.H * 0.4, h: L.H * 0.82, maxW: L.W * 0.76, angle: tiltFor(L.k, -0.1) } },
+    rise: { name: "Rise", desc: "Each phone sits higher than the last", text: () => TOP,
+      phone: (j, L) => ({ cx: L.W * 0.76, top: L.H * (0.58 - j * 0.04), h: L.H * 0.8, maxW: L.W * 0.76, angle: tiltFor(L.k, -0.05) }) },
+    angled: { name: "Angled", desc: "Big phone off the corner", text: () => TOP,
+      phone: (j, L) => { const dir = j % 2 ? -1 : 1; return { cx: L.W * (0.5 + 0.12 * dir), top: Math.max(L.y + L.H * 0.08, L.H * 0.34), h: L.H * 0.95, maxW: L.W, angle: tiltFor(L.k, 0.24 * dir) }; } }
   };
 
   /* ---------- compose ---------- */
+  /* Tablet sizes always show a tablet. Without a real tablet screenshot, the phone screenshot is
+     adapted: shown as a full-height centred column, with each row's edge colour carried out to
+     the sides so backgrounds and headers run the full width of the tablet screen. */
   function kindsFor(size, sc) {
-    if (size.form === "tablet" && sc.tabletImg) return { kind: size.platform === "apple" ? "ipad" : "atablet", img: imgEl(sc.tabletImg), tablet: true };
+    if (size.form === "tablet") {
+      const kind = size.platform === "apple" ? "ipad" : "atablet";
+      if (sc.tabletImg) return { kind, img: imgEl(sc.tabletImg), tablet: true };
+      return { kind, src: sc.img, adapt: true, tablet: true };
+    }
     return { kind: size.platform === "apple" ? "iphone" : "android", img: imgEl(sc.img) };
+  }
+  const adapted = new WeakMap();
+  function adaptForTablet(src, aspect) {
+    const img = imgEl(src); if (!img) return null;
+    const iw = img.naturalWidth, ih = img.naturalHeight; if (!iw || !ih) return null;
+    if (iw / ih >= aspect * 0.97) return img;
+    let byAspect = adapted.get(img); if (!byAspect) { byAspect = new Map(); adapted.set(img, byAspect); }
+    const key = aspect.toFixed(3); if (byAspect.has(key)) return byAspect.get(key);
+    const ch = Math.min(ih, 2600), sc = ch / ih, colW = Math.round(iw * sc), cw = Math.round(ch * aspect), x0 = Math.round((cw - colW) / 2);
+    const cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
+    const c = cv.getContext("2d"); c.imageSmoothingQuality = "high"; c.drawImage(img, x0, 0, colW, ch);
+    try {
+      const data = c.getImageData(0, 0, cw, ch), px = data.data, band = Math.max(2, Math.round(colW * 0.006));
+      for (let y = 0; y < ch; y++) {
+        const row = y * cw * 4, avg = from => { let r = 0, g = 0, b = 0; for (let x = from; x < from + band; x++) { const o = row + x * 4; r += px[o]; g += px[o + 1]; b += px[o + 2]; } return [r / band, g / band, b / band]; };
+        const L = avg(x0 + 1), R = avg(x0 + colW - band - 1);
+        for (let x = 0; x <= x0; x++) { const o = row + x * 4; px[o] = L[0]; px[o + 1] = L[1]; px[o + 2] = L[2]; px[o + 3] = 255; }
+        for (let x = x0 + colW - 1; x < cw; x++) { const o = row + x * 4; px[o] = R[0]; px[o + 1] = R[1]; px[o + 2] = R[2]; px[o + 3] = 255; }
+      }
+      c.putImageData(data, 0, 0);
+    } catch (e) { /* unreadable image: leave plain sides */ }
+    byAspect.set(key, cv); return cv;
   }
   function screenText(i, data, opts) {
     const sc = data.screens[i] || {};
@@ -504,16 +520,35 @@
     return { title: sc.title || "", hl: sc.hl || "", copy: sc.copy || "" };
   }
   function normDesign(d) { d = d || {}; return { style: STYLES[d.style] ? d.style : "glow", pattern: PATTERNS[d.pattern] ? d.pattern : "none", layout: LAYOUTS[d.layout] ? d.layout : "classic" }; }
+  let scratch = null;
   function drawScreen(ctx, W, H, size, i, data, design, opts) {
     design = normDesign(design);
-    const brand = data.brand, p = pal(brand), font = FW[brand.font] !== undefined ? brand.font : "Montserrat";
-    const st = STYLES[design.style].style({ i, p });
-    const sc = data.screens[i] || {}, tx = screenText(i, data, opts), E = { p, font };
-    const T = { st, font, ts: Math.min(W * 0.095, H * 0.048), title: st.upper ? tx.title.toUpperCase() : tx.title, hl: tx.hl, copy: tx.copy };
+    const brand = data.brand, p = pal(brand), font = FW[brand.font] !== undefined ? brand.font : "Montserrat", E = { p, font };
+    const lay = LAYOUTS[design.layout];
+    const screenFor = j => {
+      const st = STYLES[design.style].style({ i: j, p }), tx = screenText(j, data, opts);
+      const T = { st, font, ts: Math.min(W * 0.095, H * 0.048), title: st.upper ? tx.title.toUpperCase() : tx.title, hl: tx.hl, copy: tx.copy };
+      const L = { W, H, i: j, T, E, k: kindsFor(size, data.screens[j] || {}), brand, pad: W * 0.085, align: st.align || "left" };
+      L.text = lay.text(j, L);
+      return L;
+    };
+    const Li = screenFor(i), st = Li.T.st;
     ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
     st.paint(ctx, W, H);
     ctx.save(); PATTERNS[design.pattern].draw(ctx, W, H, { i, n: 7, p, fg: st.title, brand, font }); ctx.restore();
-    LAYOUTS[design.layout].draw(ctx, { W, H, i, T, E, k: kindsFor(size, sc), kOf: j => kindsFor(size, data.screens[j] || {}), brand, screens: data.screens, pad: W * 0.085, align: st.align || "left" });
+    if (Li.text.pos === "bottom") { bottomText(ctx, Li, Li.text.align); Li.y = 0; }
+    else Li.y = topText(ctx, Li, Li.text.align);
+    /* Phones drawn in screen order on every screen, so overlaps stack the same on both sides of a join. */
+    for (let j = Math.max(0, i - 1); j <= Math.min(6, i + 1); j++) {
+      let Lj = Li;
+      if (j !== i) {
+        Lj = screenFor(j);
+        if (Lj.text.pos === "bottom") Lj.y = 0;
+        else { scratch = scratch || document.createElement("canvas").getContext("2d"); Lj.y = topText(scratch, Lj, Lj.text.align); }
+      }
+      const pos = lay.phone(j, Lj); if (!pos) continue;
+      drawDevice(ctx, Lj.k.kind, Object.assign({}, pos, { cx: pos.cx + (j - i) * W, img: Lj.k.img, src: Lj.k.src, adapt: Lj.k.adapt, i: j }), E);
+    }
     ctx.restore();
   }
   function drawFeature(ctx, W, H, data, design, opts) {

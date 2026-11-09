@@ -65,7 +65,7 @@
           <div class="field"><label for="f-t-${i}">${i === 0 ? "Cover headline <small>(usually your app name)</small>" : "Headline"}</label><input type="text" id="f-t-${i}" maxlength="70" autocomplete="off" placeholder="e.g. ${esc(ph[0])}"></div>
           <div class="field"><label for="f-g-${i}">Highlight words <small>(optional, copied from the headline)</small></label><input type="text" id="f-g-${i}" maxlength="50" autocomplete="off" placeholder="e.g. ${esc(ph[1] || "simple.")}"></div>
           <div class="field"><label for="f-d-${i}">${i === 0 ? "Tagline" : "Subtitle"}</label><textarea id="f-d-${i}" rows="2" maxlength="140" placeholder="e.g. ${esc(ph[2])}"></textarea></div>
-          <div class="ups">${up("p", "Phone screenshot", false)}${up("t", "Tablet screenshot", true)}</div>
+          <div class="ups">${up("p", "Phone screenshot", false)}${up("t", "Tablet screenshot (if you have one)", true)}</div>
           ${opt.minis && i < 6 ? `<div class="scr-nav"><button class="btn small" type="button" data-next="${i + 1}">Next screen</button></div>` : ""}
         </div>${opt.minis ? `<div class="mini-wrap"><canvas class="mini" aria-label="Preview of screen ${i + 1}"></canvas><span class="mini-cap">Rough preview</span></div>` : ""}</div>`;
       box.appendChild(d);
