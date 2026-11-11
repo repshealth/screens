@@ -59,15 +59,15 @@
     const box = q("#f-screens"), minis = [];
     for (let i = 0; i < 7; i++) {
       const ph = S.SAMPLE[i], d = document.createElement("details"); d.className = "scr"; d.id = "f-scr-" + i;
-      const up = (id, label, optional) => `<div class="up"><span class="lbl">${label}${optional ? " <small>(optional)</small>" : ""}</span><div class="up-row"><img alt="" id="f-${id}i-${i}" hidden><label class="btn small" for="f-${id}f-${i}">Upload</label><input class="vh" type="file" id="f-${id}f-${i}" accept="image/png,image/jpeg,image/webp"><button class="link" type="button" id="f-${id}r-${i}" hidden>Remove</button></div></div>`;
+      const up = (id, label, optional, help) => `<div class="up"><span class="lbl">${label}${optional ? " <small>(optional)</small>" : ""}</span><span class="up-help">${help}</span><div class="up-row"><img alt="" id="f-${id}i-${i}" hidden><label class="btn small" for="f-${id}f-${i}">Upload</label><input class="vh" type="file" id="f-${id}f-${i}" accept="image/png,image/jpeg,image/webp"><button class="link" type="button" id="f-${id}r-${i}" hidden>Remove</button></div></div>`;
       d.innerHTML = `<summary><span class="num">${S.pad2(i + 1)}</span><span class="st"></span><span class="chip"></span></summary>
         <div class="scr-body${opt.minis ? " with-mini" : ""}"><div class="scr-fields">
           <div class="field"><label for="f-t-${i}">${i === 0 ? "Cover headline <small>(usually your app name)</small>" : "Headline"}</label><input type="text" id="f-t-${i}" maxlength="70" autocomplete="off" placeholder="e.g. ${esc(ph[0])}"></div>
           <div class="field"><label for="f-g-${i}">Highlight words <small>(optional, copied from the headline)</small></label><input type="text" id="f-g-${i}" maxlength="50" autocomplete="off" placeholder="e.g. ${esc(ph[1] || "simple.")}"></div>
           <div class="field"><label for="f-d-${i}">${i === 0 ? "Tagline" : "Subtitle"}</label><textarea id="f-d-${i}" rows="2" maxlength="140" placeholder="e.g. ${esc(ph[2])}"></textarea></div>
-          <div class="ups">${up("p", "Phone screenshot", false)}${up("t", "Tablet screenshot (if you have one)", true)}</div>
+          <div class="ups">${up("p", "iPhone &amp; Android phone", false, "Used on every phone screenshot")}${up("t", "iPad", true, "Without one, we adapt your phone screenshot")}${up("a", "Android tablet", true, "Without one, we use your iPad screenshot")}</div>
           ${opt.minis && i < 6 ? `<div class="scr-nav"><button class="btn small" type="button" data-next="${i + 1}">Next screen</button></div>` : ""}
-        </div>${opt.minis ? `<div class="mini-wrap"><canvas class="mini" aria-label="Preview of screen ${i + 1}"></canvas><span class="mini-cap">Rough preview</span></div>` : ""}</div>`;
+        </div>${opt.minis ? `<div class="mini-wrap"><canvas class="mini" aria-label="Preview of screen ${i + 1}"></canvas><span class="mini-cap" id="f-mc-${i}">Rough preview</span></div>` : ""}</div>`;
       box.appendChild(d);
       if (opt.minis) minis.push(d.querySelector(".mini"));
       d.addEventListener("toggle", () => { if (d.open) { box.querySelectorAll("details.scr").forEach(o => { if (o !== d) o.open = false; }); if (opt.onOpen) opt.onOpen(i); } });
@@ -75,7 +75,7 @@
       q("#f-t-" + i).addEventListener("input", e => { sc().title = e.target.value; syncScreen(i); onChange(); });
       q("#f-g-" + i).addEventListener("input", e => { sc().hl = e.target.value; onChange(); });
       q("#f-d-" + i).addEventListener("input", e => { sc().copy = e.target.value; onChange(); });
-      [["p", "img", 1290], ["t", "tabletImg", 2064]].forEach(([id, key, max]) => {
+      [["p", "img", 1290], ["t", "tabletImg", 2064], ["a", "atabImg", 1600]].forEach(([id, key, max]) => {
         q(`#f-${id}f-${i}`).addEventListener("change", e => {
           const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
           S.processImage(f, max, "image/jpeg").then(url => { sc()[key] = url; syncScreen(i); onChange(); }).catch(() => {});
@@ -94,8 +94,8 @@
       const s = get().screens[i];
       [["t", "title"], ["g", "hl"], ["d", "copy"]].forEach(([id, k]) => { const el = q(`#f-${id}-${i}`); if (el.value !== s[k]) el.value = s[k]; });
       const st = q(`#f-scr-${i} .st`); st.textContent = s.title || "Not filled in yet"; st.classList.toggle("empty", !s.title);
-      const chip = q(`#f-scr-${i} .chip`); chip.textContent = s.img ? "Screenshot added" : "Needs screenshot"; chip.classList.toggle("ok", !!s.img);
-      [["p", "img"], ["t", "tabletImg"]].forEach(([id, key]) => { const el = q(`#f-${id}i-${i}`); el.hidden = !s[key]; if (s[key]) el.src = s[key]; q(`#f-${id}r-${i}`).hidden = !s[key]; });
+      const chip = q(`#f-scr-${i} .chip`); chip.textContent = s.img ? ["Phone", s.tabletImg && "iPad", s.atabImg && "Android tablet"].filter(Boolean).join(" + ") : "Needs phone screenshot"; chip.classList.toggle("ok", !!s.img);
+      [["p", "img"], ["t", "tabletImg"], ["a", "atabImg"]].forEach(([id, key]) => { const el = q(`#f-${id}i-${i}`); el.hidden = !s[key]; if (s[key]) el.src = s[key]; q(`#f-${id}r-${i}`).hidden = !s[key]; });
     }
     function sync() {
       const b = get().brand;

@@ -487,7 +487,8 @@
   function kindsFor(size, sc) {
     if (size.form === "tablet") {
       const kind = size.platform === "apple" ? "ipad" : "atablet";
-      if (sc.tabletImg) return { kind, img: imgEl(sc.tabletImg), tablet: true };
+      const own = size.platform === "apple" ? sc.tabletImg : (sc.atabImg || sc.tabletImg);
+      if (own) return { kind, img: imgEl(own), tablet: true };
       return { kind, src: sc.img, adapt: true, tablet: true };
     }
     return { kind: size.platform === "apple" ? "iphone" : "android", img: imgEl(sc.img) };
@@ -568,9 +569,9 @@
   }
 
   /* ---------- brief data ---------- */
-  function emptyScreens() { return Array.from({ length: 7 }, () => ({ title: "", hl: "", copy: "", img: null, tabletImg: null })); }
+  function emptyScreens() { return Array.from({ length: 7 }, () => ({ title: "", hl: "", copy: "", img: null, tabletImg: null, atabImg: null })); }
   function emptyBrief() { return { kind: "store-screen-brief", version: 3, contact: { name: "", email: "", notes: "" }, brand: { appName: "", logo: null, primary: "#6C55A3", accent: "#F5B83D", dark: null, light: null, font: "Montserrat", badges: ["", ""] }, screens: emptyScreens() }; }
-  function sampleBrief() { const b = emptyBrief(); b.brand.appName = "Forge Coaching"; b.brand.badges = ["4.9 rating", "10K+ members"]; b.screens = SAMPLE.map(x => ({ title: x[0], hl: x[1], copy: x[2], img: null, tabletImg: null })); return b; }
+  function sampleBrief() { const b = emptyBrief(); b.brand.appName = "Forge Coaching"; b.brand.badges = ["4.9 rating", "10K+ members"]; b.screens = SAMPLE.map(x => ({ title: x[0], hl: x[1], copy: x[2], img: null, tabletImg: null, atabImg: null })); return b; }
   function cleanBrief(d) {
     const b = emptyBrief(); d = d || {};
     const hex = v => (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v.toUpperCase() : null);
@@ -579,7 +580,7 @@
     const br = d.brand || {}, ct = d.contact || {};
     b.contact = { name: s(ct.name, 80), email: s(ct.email, 120), notes: s(ct.notes, 2000) };
     b.brand = { appName: s(br.appName, 40), logo: img(br.logo), primary: hex(br.primary) || b.brand.primary, accent: hex(br.accent) || b.brand.accent, dark: hex(br.dark), light: hex(br.light), font: FW[br.font] !== undefined ? br.font : "Montserrat", badges: [0, 1].map(k => s((br.badges || [])[k], 22)) };
-    b.screens = b.screens.map((e, i) => { const x = (d.screens || [])[i] || {}; return { title: s(x.title, 80), hl: s(x.hl, 60), copy: s(x.copy, 160), img: img(x.img), tabletImg: img(x.tabletImg) }; });
+    b.screens = b.screens.map((e, i) => { const x = (d.screens || [])[i] || {}; return { title: s(x.title, 80), hl: s(x.hl, 60), copy: s(x.copy, 160), img: img(x.img), tabletImg: img(x.tabletImg), atabImg: img(x.atabImg) }; });
     return b;
   }
   function processImage(file, maxW, type) {
@@ -603,6 +604,13 @@
   global.SSS = {
     FONTS, FW, SIZES, PREVIEW_SIZE, DEVICE, SAMPLE, STYLES, PATTERNS, LAYOUTS,
     pal, mix, alpha, rr, pad2, ensureFonts, imgEl, setOnImage: fn => { onImage = fn; },
+    /* Which screenshot a device will use for screen j: "own", "ipad" (Android tablet using the iPad one), "adapted" or "none". */
+    sourceFor(sc, device) {
+      sc = sc || {};
+      if (device === "iphone" || device === "android") return sc.img ? "own" : "none";
+      if (device === "ipad") return sc.tabletImg ? "own" : sc.img ? "adapted" : "none";
+      return sc.atabImg ? "own" : sc.tabletImg ? "ipad" : sc.img ? "adapted" : "none";
+    },
     drawScreen, drawFeature, normDesign, emptyBrief, sampleBrief, cleanBrief, processImage
   };
 })(window);

@@ -226,7 +226,11 @@
   function foot() {
     const size = S.SIZES.find(s => s.id === S.PREVIEW_SIZE[prefs.device]);
     const n = S.SIZES.filter(s => prefs.sizes[s.id]).reduce((a, s) => a + (s.feature ? 1 : 7), 0);
-    $("#stage-foot").innerHTML = `<span>Previewing <b>${size.store} ${size.label}</b> at ${size.w} × ${size.h}</span><span><b>${brief.screens.filter(s => s.img).length}/7</b> screenshots</span><span><b>${n}</b> images in the export</span>`;
+    const src = brief.screens.map(s => S.sourceFor(s, prefs.device)), cnt = k => src.filter(x => x === k).length;
+    const uses = prefs.device === "iphone" || prefs.device === "android"
+      ? `<b>${cnt("own")}/7</b> phone screenshots`
+      : [cnt("own") && `<b>${cnt("own")}</b> own ${prefs.device === "ipad" ? "iPad" : "Android tablet"} screenshots`, cnt("ipad") && `<b>${cnt("ipad")}</b> using the iPad screenshot`, cnt("adapted") && `<b>${cnt("adapted")}</b> adapted from the phone`].filter(Boolean).join(", ") || "no screenshots yet";
+    $("#stage-foot").innerHTML = `<span>Previewing <b>${size.store} ${size.label}</b> at ${size.w} × ${size.h}</span><span>${uses}</span><span><b>${n}</b> images in the export</span>`;
   }
 
   /* ---------- rendering ---------- */

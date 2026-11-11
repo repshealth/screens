@@ -11,7 +11,7 @@
     clearTimeout(saveT);
     saveT = setTimeout(() => {
       try { localStorage.setItem(KEY, JSON.stringify(brief)); }
-      catch (e) { try { const lite = JSON.parse(JSON.stringify(brief)); lite.brand.logo = null; lite.screens.forEach(s => { s.img = s.tabletImg = null; }); localStorage.setItem(KEY, JSON.stringify(lite)); } catch (e2) {} }
+      catch (e) { try { const lite = JSON.parse(JSON.stringify(brief)); lite.brand.logo = null; lite.screens.forEach(s => { s.img = s.tabletImg = s.atabImg = null; }); localStorage.setItem(KEY, JSON.stringify(lite)); } catch (e2) {} }
     }, 400);
   }
 
@@ -21,12 +21,22 @@
   $("#c-name").value = brief.contact.name; $("#c-email").value = brief.contact.email; $("#c-notes").value = brief.contact.notes;
   [["c-name", "name"], ["c-email", "email"], ["c-notes", "notes"]].forEach(([id, k]) => $("#" + id).addEventListener("input", e => { brief.contact[k] = e.target.value; changed(); }));
 
+  const DEV_NAME = { iphone: "iPhone", android: "Android phone", ipad: "iPad", atablet: "Android tablet" };
+  let previewDev = "iphone";
+  document.querySelectorAll("#devseg button").forEach(bt => bt.addEventListener("click", () => {
+    previewDev = bt.dataset.dev; document.querySelectorAll("#devseg button").forEach(b => b.setAttribute("aria-pressed", String(b === bt))); render();
+  }));
   let rT = null;
   function render() {
     clearTimeout(rT);
     rT = setTimeout(() => S.ensureFonts(brief.brand.font).then(() => {
-      const ip = S.SIZES[0], dpr = Math.min(2, window.devicePixelRatio || 1);
-      form.minis.forEach((cv, i) => { cv.width = Math.round(130 * dpr); cv.height = Math.round(130 * dpr * ip.h / ip.w); cv.style.height = (130 * ip.h / ip.w) + "px"; S.drawScreen(cv.getContext("2d"), cv.width, cv.height, ip, i, brief, DESIGN, { sampleFill: true }); });
+      const ip = S.SIZES.find(s => s.id === S.PREVIEW_SIZE[previewDev]), dpr = Math.min(2, window.devicePixelRatio || 1);
+      const NOTE = { own: "", ipad: " (using your iPad screenshot)", adapted: " (adapted from your phone screenshot)", none: "" };
+      form.minis.forEach((cv, i) => {
+        cv.width = Math.round(130 * dpr); cv.height = Math.round(130 * dpr * ip.h / ip.w); cv.style.height = (130 * ip.h / ip.w) + "px";
+        S.drawScreen(cv.getContext("2d"), cv.width, cv.height, ip, i, brief, DESIGN, { sampleFill: true });
+        const cap = document.getElementById("f-mc-" + i); if (cap) cap.textContent = "Rough preview: " + DEV_NAME[previewDev] + NOTE[S.sourceFor(brief.screens[i], previewDev)];
+      });
     }), 90);
   }
   S.setOnImage(render);
